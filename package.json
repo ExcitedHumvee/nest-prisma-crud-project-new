@@ -6,7 +6,7 @@
     "start": "ts-node src/main.ts",
     "start:dev": "npx prisma generate && npx prisma migrate dev --name init && ts-node-dev --respawn src/main.ts",
     "test": "npx jest",
-    "test:e2e": "node test-expense-endpoints.js",
+    "test:e2e": "node test-endpoints.js",
     "test:all": "npm run test && npm run test:e2e",
     "seed": "npx prisma db seed",
     "migrate": "npx prisma migrate dev",
