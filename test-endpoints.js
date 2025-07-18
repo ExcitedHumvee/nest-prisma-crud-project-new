@@ -1,149 +1,264 @@
-#!/usr/bin/env node
-const baseUrl = process.argv[2] || 'http://localhost:3000/users';
-const rootUrl = baseUrl.replace(/\/users$/, '');
+// e2e-test.js
 
-const testState = {
-    passed: 0,
-    failed: 0,
-    total: 0,
-    createdUserId: null,
+const assert = require('assert');
+
+// --- Configuration ---
+const API_BASE_URL = 'http://localhost:3000'; // Replace with your API's base URL
+// --- End of Configuration ---
+
+
+// --- Global State ---
+// We will store tokens and IDs for two different users
+let userOne = {
+  email: `userOne_${Date.now()}@example.com`,
+  password: 'password123',
+  name: 'User One',
+  authToken: '',
+  expenseId: null,
 };
 
-const colors = {
-    reset: '\x1b[0m',
-    green: '\x1b[32m',
-    red: '\x1b[31m',
-    yellow: '\x1b[33m',
-    cyan: '\x1b[36m',
-    bold: '\x1b[1m',
+let userTwo = {
+  email: `userTwo_${Date.now()}@example.com`,
+  password: 'password456',
+  name: 'User Two',
+  authToken: '',
 };
 
-function colorize(text, color) {
-    return color + text + colors.reset;
-}
+// --- Test Runner & Helpers ---
 
-function writeHeader(title) {
-    console.log(`\n${colors.cyan}${colors.bold}--- ${title} ---${colors.reset}`);
-}
-
-async function testEndpoint({ description, method, uri, body, expectedStatusCodes }) {
-    testState.total++;
-    let res, data, error = null;
-    try {
-        res = await fetch(uri, {
-            method,
-            headers: { 'Accept': 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
-            body: body ? JSON.stringify(body) : undefined,
-        });
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-            data = await res.json();
-        } else {
-            data = await res.text();
-        }
-    } catch (e) {
-        error = e;
-        res = { status: -1 };
+/**
+ * A robust test runner that provides detailed logging on failure.
+ * @param {string} testName - The name of the test.
+ * @param {Function} testFunction - The async function that performs the test logic.
+ */
+const runTest = async (testName, testFunction) => {
+  console.log(`\n▶️  Running: ${testName}`);
+  try {
+    await testFunction();
+    console.log(`✅  PASSED: ${testName}`);
+  } catch (error) {
+    console.error(`❌  FAILED: ${testName}`);
+    console.error('   Error Message:', error.message);
+    
+    if (error.request) {
+      console.error('   Request:', {
+        method: error.request.method,
+        url: error.request.url,
+        body: error.request.body ? JSON.parse(error.request.body) : 'No Body',
+      });
     }
-    if (expectedStatusCodes.includes(res.status)) {
-        testState.passed++;
-        console.log(`  ${colorize('[PASS]', colors.green)} It ${description}`);
-        return { data };
+    if (error.response) {
+      console.error('   Response:', {
+        status: error.response.status,
+        body: error.response.body,
+      });
+    }
+    process.exit(1); // Exit with a failure code
+  }
+};
+
+/**
+ * A centralized fetch handler to attach detailed error context.
+ * @param {Function} fetch - The fetch function from node-fetch.
+ * @returns {Function} A configured request function.
+ */
+const createRequestHandler = (fetch) => async (requestDetails) => {
+  const { url, method, body, token, expectedStatus } = requestDetails;
+  
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const options = {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  };
+
+  const response = await fetch(url, options);
+  let responseBody;
+  const contentType = response.headers.get("content-type");
+
+  try {
+    if (response.status === 204) {
+      responseBody = null;
+    } else if (contentType && contentType.includes("application/json")) {
+        responseBody = await response.json();
     } else {
-        let details = `Expected status in [${expectedStatusCodes.join(',')}], but got ${res.status}.`;
-        if (error) details += ` Error: ${error.message}`;
-        console.log(`  ${colorize('[FAIL]', colors.red)} It ${description} - ${details}`);
-        testState.failed++;
-        return null;
+        responseBody = await response.text();
     }
-}
+  } catch(e) {
+    responseBody = "[Could not parse response body]";
+  }
 
-function newTestUserData() {
-    const guid = Math.random().toString(36).substring(2, 10);
-    return { name: `User_${guid}`, email: `test_${guid}@example.com` };
-}
+  if (response.status !== expectedStatus) {
+    const error = new Error(`Expected status ${expectedStatus} but got ${response.status}`);
+    error.request = { method, url, body: options.body };
+    error.response = { status: response.status, body: responseBody };
+    throw error;
+  }
 
-(async function main() {
-    writeHeader('Prerequisite: Server Reachability');
-    try {
-        const res = await fetch(rootUrl, { method: 'GET' });
-        if (!res.ok && res.status !== 404) throw new Error('Unexpected status');
-        console.log(`  ${colorize('[INFO]', colors.yellow)} Server is reachable at ${rootUrl}.`);
-    } catch (e) {
-        console.log(`  ${colorize('[FATAL]', colors.red)} Could not connect to the server at ${rootUrl}. Aborting tests.`);
-        process.exit(1);
-    }
+  return responseBody;
+};
 
-    writeHeader('Testing /users (Collection Endpoint)');
 
-    // Create user
-    const createdUserResult = await testEndpoint({
-        description: 'should create a new user (POST)',
-        method: 'POST',
-        uri: `${baseUrl}`,
-        body: newTestUserData(),
-        expectedStatusCodes: [200, 201],
+/**
+ * Main function to run all tests.
+ */
+const main = async () => {
+    // Dynamically import node-fetch and create our request handler
+    const fetch = (await import('node-fetch')).default;
+    const makeRequest = createRequestHandler(fetch);
+
+    console.log('--- Starting Comprehensive Expense Tracker API E2E Tests ---');
+
+    // =================================================================
+    // === 1. AUTHENTICATION (/auth)
+    // =================================================================
+    console.log('\n--- Testing Endpoint: /auth/register ---');
+    await runTest('Happy Path: Should register User One successfully', async () => {
+        const body = await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { email: userOne.email, password: userOne.password, name: userOne.name }, expectedStatus: 201 });
+        assert.ok(body.access_token, 'Response should contain an access_token');
+        userOne.authToken = body.access_token;
     });
-    const createdUser = createdUserResult && createdUserResult.data ? createdUserResult.data : createdUserResult;
-    if (createdUser && createdUser.id) {
-        testState.createdUserId = createdUser.id;
-        console.log(`    -  (Validation) ${colorize('User created with ID:', colors.green)} ${testState.createdUserId}`);
-    } else {
-        console.log(`    -  (Validation) ${colorize('[FAIL] Response for created user is missing an id property.', colors.red)}`);
-        testState.failed++;
-        testState.passed--;
-    }
-
-    // Get all users
-    await testEndpoint({
-        description: 'should list all users (GET)',
-        method: 'GET',
-        uri: `${baseUrl}`,
-        expectedStatusCodes: [200],
+    await runTest('Happy Path: Should register User Two successfully', async () => {
+        const body = await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { email: userTwo.email, password: userTwo.password, name: userTwo.name }, expectedStatus: 201 });
+        userTwo.authToken = body.access_token;
+    });
+    await runTest('Happy Path: Should register with minimum length password (6 chars)', async () => {
+        const minPassUser = { email: `minpass_${Date.now()}@test.com`, password: '123456' };
+        await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: minPassUser, expectedStatus: 201 });
     });
 
-    if (testState.createdUserId) {
-        const userId = testState.createdUserId;
-        writeHeader(`Testing /users/${userId} (Specific User Endpoint)`);
-        // Test GET by ID
-        await testEndpoint({
-            description: 'should get the created user by ID (GET)',
-            method: 'GET',
-            uri: `${baseUrl}/${userId}`,
-            expectedStatusCodes: [200],
-        });
-        // Test PUT (Update)
-        const updatePayload = { name: `Updated User`, email: createdUser.email };
-        await testEndpoint({
-            description: 'should update the user by ID (PUT)',
-            method: 'PUT',
-            uri: `${baseUrl}/${userId}`,
-            body: updatePayload,
-            expectedStatusCodes: [200],
-        });
-        // Test DELETE
-        await testEndpoint({
-            description: 'should delete the user by ID (DELETE)',
-            method: 'DELETE',
-            uri: `${baseUrl}/${userId}`,
-            expectedStatusCodes: [200, 204],
-        });
-        // Test GET after DELETE
-        await testEndpoint({
-            description: 'should return 404 for the deleted user',
-            method: 'GET',
-            uri: `${baseUrl}/${userId}`,
-            expectedStatusCodes: [404],
-        });
-    } else {
-        console.log(`\n${colors.yellow}${colors.bold}--- SKIPPING USER-SPECIFIC TESTS ---${colors.reset}`);
-        console.log(colorize('Could not retrieve a user ID from the creation step. Cannot test GET/PUT/DELETE by ID.', colors.yellow));
-    }
+    console.log('\n--- Bad Paths & Input Validation: /auth/register ---');
+    await runTest('Should fail with 409 (Conflict) for duplicate email', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { email: userOne.email, password: userOne.password }, expectedStatus: 409 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for missing email', async () => {
+        const body = await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { password: 'somepassword' }, expectedStatus: 400 });
+        assert.ok(Array.isArray(body.message), "Error message should be an array of validation errors");
+    });
+    await runTest('Should fail with 400 (Bad Request) for invalid email format', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { email: 'not-an-email', password: 'somepassword' }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for null password', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { email: `fail_${Date.now()}@test.com`, password: null }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for empty string password', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { email: `fail_${Date.now()}@test.com`, password: '' }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for password too short', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/auth/register`, method: 'POST', body: { email: `fail_${Date.now()}@test.com`, password: '123' }, expectedStatus: 400 });
+    });
 
-    writeHeader('TEST SUMMARY');
-    console.log(`${colors.bold}Total Tests:${colors.reset} ${testState.total}`);
-    console.log(`${colors.green}Passed:     ${testState.passed}${colors.reset}`);
-    console.log(`${colors.red}Failed:     ${testState.failed}${colors.reset}`);
-    console.log(`${colors.cyan}${colors.bold}--- END OF SUMMARY ---${colors.reset}`);
-    if (testState.failed > 0) process.exit(1);
-})();
+    console.log('\n--- Testing Endpoint: /auth/login ---');
+    await runTest('Happy Path: Should log in User One successfully', async () => {
+        const body = await makeRequest({ url: `${API_BASE_URL}/auth/login`, method: 'POST', body: { email: userOne.email, password: userOne.password }, expectedStatus: 200 });
+        userOne.authToken = body.access_token;
+    });
+
+    // =================================================================
+    // === 2. EXPENSES (/expenses)
+    // =================================================================
+    console.log('\n--- Testing Endpoint: POST /expenses ---');
+    await runTest('Happy Path: User One creates a new expense', async () => {
+        const expense = { amount: 100.50, date: new Date().toISOString(), category: 'Food' };
+        const body = await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', token: userOne.authToken, body: expense, expectedStatus: 201 });
+        assert.ok(body.id, 'Created expense should have an ID');
+        userOne.expenseId = body.id;
+    });
+
+    console.log('\n--- Bad Paths & Input Validation: POST /expenses ---');
+    await runTest('Should fail with 401 (Unauthorized) if no auth token is provided', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', body: { amount: 10, date: new Date().toISOString(), category: 'Fun' }, expectedStatus: 401 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for missing required fields (amount, date, category)', async () => {
+        const body = await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', token: userOne.authToken, body: {}, expectedStatus: 400 });
+        assert.ok(Array.isArray(body.message) && body.message.length >= 3, "Should report multiple validation errors");
+    });
+    await runTest('Should fail with 400 (Bad Request) for amount = 0', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', token: userOne.authToken, body: { amount: 0, date: new Date().toISOString(), category: 'Test' }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for negative amount', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', token: userOne.authToken, body: { amount: -50, date: new Date().toISOString(), category: 'Test' }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for non-numeric amount', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', token: userOne.authToken, body: { amount: "not-a-number", date: new Date().toISOString(), category: 'Test' }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for invalid date format', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', token: userOne.authToken, body: { amount: 20, date: 'yesterday', category: 'Test' }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for empty string category', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses`, method: 'POST', token: userOne.authToken, body: { amount: 20, date: new Date().toISOString(), category: '' }, expectedStatus: 400 });
+    });
+    
+    console.log('\n--- Bad Paths & Input Validation: GET /expenses (Query Filters) ---');
+    await runTest('Should fail with 400 (Bad Request) for invalid startDate query', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses?startDate=invalid-date`, method: 'GET', token: userOne.authToken, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for invalid endDate query', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses?endDate=invalid-date`, method: 'GET', token: userOne.authToken, expectedStatus: 400 });
+    });
+    
+    // =================================================================
+    // === 3. EXPENSE ACCESS & MODIFICATION (/expenses/:id)
+    // =================================================================
+    console.log('\n--- Testing Endpoint: GET /expenses/:id ---');
+    await runTest('Happy Path: User One can retrieve their own expense', async () => {
+        const body = await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'GET', token: userOne.authToken, expectedStatus: 200 });
+        assert.strictEqual(body.id, userOne.expenseId);
+    });
+
+    console.log('\n--- CRITICAL SECURITY TEST: Verifying Data Isolation ---');
+    await runTest('GET: Should fail with 403 (Forbidden) when User Two requests User One\'s expense', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'GET', token: userTwo.authToken, expectedStatus: 403 });
+    });
+    await runTest('PATCH: Should fail with 403 (Forbidden) when User Two updates User One\'s expense', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'PATCH', token: userTwo.authToken, body: { amount: 1 }, expectedStatus: 403 });
+    });
+    await runTest('DELETE: Should fail with 403 (Forbidden) when User Two deletes User One\'s expense', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'DELETE', token: userTwo.authToken, expectedStatus: 403 });
+    });
+    
+    console.log('\n--- Testing Endpoint: PATCH /expenses/:id ---');
+    await runTest('Happy Path: User One can update their own expense', async () => {
+        const updatePayload = { amount: 150.25, note: 'Updated Note' };
+        const body = await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'PATCH', token: userOne.authToken, body: updatePayload, expectedStatus: 200 });
+        assert.strictEqual(body.amount, updatePayload.amount, "Amount should be updated");
+        assert.strictEqual(body.note, updatePayload.note, "Note should be updated");
+    });
+    
+    console.log('\n--- Bad Paths & Input Validation: PATCH /expenses/:id ---');
+    await runTest('Should fail with 400 (Bad Request) for negative amount on update', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'PATCH', token: userOne.authToken, body: { amount: -10 }, expectedStatus: 400 });
+    });
+    await runTest('Should fail with 400 (Bad Request) for invalid date on update', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'PATCH', token: userOne.authToken, body: { date: 'not-a-valid-date' }, expectedStatus: 400 });
+    });
+
+    // =================================================================
+    // === 4. DELETION
+    // =================================================================
+    console.log('\n--- Testing Endpoint: DELETE /expenses/:id ---');
+    await runTest('Happy Path: User One can delete their own expense', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'DELETE', token: userOne.authToken, expectedStatus: 204 });
+    });
+    
+    await runTest('Should fail with 404 (Not Found) when trying to get a deleted expense', async () => {
+        await makeRequest({ url: `${API_BASE_URL}/expenses/${userOne.expenseId}`, method: 'GET', token: userOne.authToken, expectedStatus: 404 });
+    });
+    
+    console.log('\n-----------------------------------------------');
+    console.log('✅ All E2E tests passed successfully!');
+    console.log('-----------------------------------------------');
+};
+
+// Run the main async function
+main().catch(err => {
+    // The runTest function already handles detailed logging and process exit.
+    // This catch is a final safety net.
+    console.error('\n--- A critical, unhandled error occurred during the test run ---');
+    console.error(err);
+    process.exit(1);
+});
