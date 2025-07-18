@@ -2,7 +2,7 @@
 
 A comprehensive RESTful API for managing personal expenses with JWT authentication, built with NestJS, Prisma, and SQLite.
 
-## 🚀 Features
+## Features
 
 ### Core Functionality
 - **User Management**: Secure registration and login with JWT authentication
@@ -20,13 +20,13 @@ A comprehensive RESTful API for managing personal expenses with JWT authenticati
 - **TypeScript**: Full type safety throughout the application
 - **Docker Support**: Easy deployment with Docker
 
-## 📋 Requirements
+## Requirements
 
 - Node.js (v18 or higher)
 - npm or yarn
 - SQLite (included with the project)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Local Development
 
@@ -63,7 +63,7 @@ npm run start:dev
 docker-compose up --build
 ```
 
-## 🔧 Available Scripts
+## Available Scripts
 
 - `npm run start:dev` - Start development server with hot reload
 - `npm run start` - Start production server
@@ -75,7 +75,7 @@ docker-compose up --build
 - `npm run test:all` - Run both unit and e2e tests
 - `npm run build` - Build for production
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Authentication
 | Method | Endpoint | Description |
@@ -103,7 +103,7 @@ docker-compose up --build
 - `year` - Year for summary (defaults to current year)
 - `month` - Month for summary (defaults to current month)
 
-## 🔐 Authentication
+## Authentication
 
 The API uses JWT tokens for authentication. Include the token in the Authorization header:
 
@@ -120,7 +120,7 @@ Email: jane@example.com
 Password: password123
 ```
 
-## 📊 Example Requests
+## Example Requests
 
 ### Register a new user
 ```bash
@@ -162,12 +162,12 @@ curl -X GET "http://localhost:3000/expenses/summary/monthly?year=2025&month=1" \
   -H "Authorization: Bearer <your-jwt-token>"
 ```
 
-## 📚 Documentation
+## Documentation
 
 - **Swagger UI**: http://localhost:3000/api
 - **OpenAPI Spec**: http://localhost:3000/api/docs
 
-## 🧪 Testing
+## Testing
 
 Run unit tests:
 ```bash
@@ -180,7 +180,7 @@ The test suite includes:
 - Input validation tests
 - Error handling tests
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### User
 - `id` - Primary key
@@ -200,7 +200,7 @@ The test suite includes:
 - `createdAt` - Creation timestamp
 - `updatedAt` - Last update timestamp
 
-## 🔒 Security Features
+## Security Features
 
 - Password hashing with bcrypt
 - JWT token validation
@@ -208,7 +208,7 @@ The test suite includes:
 - User authorization (users can only access their own expenses)
 - Environment variable configuration
 
-## 🚀 Deployment
+## Deployment
 
 ### Docker Deployment
 ```bash
@@ -224,7 +224,7 @@ PORT=3000
 NODE_ENV=production
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -246,7 +246,7 @@ prisma/
 └── seed.ts             # Database seeding script
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -255,11 +255,11 @@ prisma/
 5. Run the test suite
 6. Submit a pull request
 
-## 📝 License
+## License
 
 This project is licensed under the ISC License.
 
-## 🆘 Support
+## Support
 
 For support and questions:
 - Create an issue on GitHub

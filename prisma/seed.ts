@@ -29,7 +29,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Created sample users');
+  console.log('Created sample users');
 
   // Create sample expenses for John Doe
   const johnExpenses = [
@@ -171,7 +171,7 @@ async function main() {
     data: [...johnExpenses, ...janeExpenses],
   });
 
-  console.log('✅ Created sample expenses');
+  console.log('Created sample expenses');
 
   // Display summary
   const totalUsers = await prisma.user.count();
@@ -182,12 +182,12 @@ async function main() {
     },
   });
 
-  console.log(`\n📊 Seeding completed successfully!`);
-  console.log(`👥 Total users: ${totalUsers}`);
-  console.log(`💰 Total expenses: ${totalExpenses}`);
-  console.log(`💵 Total amount: $${totalAmount._sum.amount?.toFixed(2) || '0.00'}`);
+  console.log(`\nSeeding completed successfully!`);
+  console.log(`Total users: ${totalUsers}`);
+  console.log(`Total expenses: ${totalExpenses}`);
+  console.log(`Total amount: $${totalAmount._sum.amount?.toFixed(2) || '0.00'}`);
 
-  console.log(`\n🔑 Sample login credentials:`);
+  console.log(`\nSample login credentials:`);
   console.log(`Email: john@example.com`);
   console.log(`Password: password123`);
   console.log(`\nEmail: jane@example.com`);
@@ -196,7 +196,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error('❌ Error during seeding:', e);
+    console.error('Error during seeding:', e);
     process.exit(1);
   })
   .finally(async () => {

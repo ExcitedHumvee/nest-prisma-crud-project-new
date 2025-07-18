@@ -70,7 +70,7 @@ async function bootstrap() {
     // Start the HTTP server on port 3000
     const port = process.env.PORT || 3000;
     await app.listen(port);
-    console.log(`🚀 Expense Tracker API is running on http://localhost:${port}`);
-    console.log(`📚 Swagger documentation available at http://localhost:${port}/api`);
+    console.log(`Expense Tracker API is running on http://localhost:${port}`);
+    console.log(`Swagger documentation available at http://localhost:${port}/api`);
 }
 bootstrap();

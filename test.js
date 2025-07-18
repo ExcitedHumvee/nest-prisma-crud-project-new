@@ -39,11 +39,11 @@ const updatedExpenseData = {
  */
 const runTest = async (testName, testFunction) => {
   try {
-    console.log(`\n▶️  Running: ${testName}`);
+    console.log(`\n>  Running: ${testName}`);
     await testFunction();
-    console.log(`✅  PASSED: ${testName}`);
+    console.log(`PASSED: ${testName}`);
   } catch (error) {
-    console.error(`❌  FAILED: ${testName}`);
+    console.error(`FAILED: ${testName}`);
     // Log detailed error information
     console.error('   Error:', error.message);
     if (error.body) {
@@ -227,7 +227,7 @@ const runAllTests = async () => {
 
 
   console.log('\n-----------------------------------------------');
-  console.log('✅ All E2E tests passed successfully!');
+  console.log('All E2E tests passed successfully!');
   console.log('-----------------------------------------------');
 };
 

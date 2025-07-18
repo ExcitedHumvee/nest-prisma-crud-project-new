@@ -48,12 +48,12 @@ let testStats = {
  * @param {string} category - Optional category for grouping tests
  */
 const runTest = async (testName, testFunction, category = 'general') => {
-  console.log(`\n▶️  Running: ${testName}`);
+  console.log(`\n>  Running: ${testName}`);
   testStats.total++;
   
   try {
     await testFunction();
-    console.log(`✅  PASSED: ${testName}`);
+    console.log(`PASSED: ${testName}`);
     testStats.passed++;
     
     // Update category stats
@@ -61,7 +61,7 @@ const runTest = async (testName, testFunction, category = 'general') => {
       testStats.categories[category].passed++;
     }
   } catch (error) {
-    console.error(`❌  FAILED: ${testName}`);
+    console.error(`FAILED: ${testName}`);
     console.error('   Error Message:', error.message);
     
     if (error.request) {
@@ -145,10 +145,10 @@ const main = async () => {
     testStats.startTime = new Date();
     
     console.log('='.repeat(80));
-    console.log('🚀 STARTING COMPREHENSIVE EXPENSE TRACKER API E2E TESTS');
+    console.log('STARTING COMPREHENSIVE EXPENSE TRACKER API E2E TESTS');
     console.log('='.repeat(80));
-    console.log(`📅 Test started at: ${testStats.startTime.toISOString()}`);
-    console.log(`🌐 Testing API at: ${API_BASE_URL}`);
+    console.log(`Test started at: ${testStats.startTime.toISOString()}`);
+    console.log(`Testing API at: ${API_BASE_URL}`);
     console.log('='.repeat(80));
 
     // =================================================================
@@ -383,18 +383,18 @@ const main = async () => {
     const durationSeconds = (duration / 1000).toFixed(2);
     
     console.log('\n' + '='.repeat(80));
-    console.log('📊 COMPREHENSIVE TEST EXECUTION SUMMARY');
+    console.log('COMPREHENSIVE TEST EXECUTION SUMMARY');
     console.log('='.repeat(80));
     
     // Overall results
-    console.log(`🎯 OVERALL RESULTS:`);
-    console.log(`   ✅ Tests Passed: ${testStats.passed}`);
-    console.log(`   ❌ Tests Failed: ${testStats.failed}`);
-    console.log(`   📈 Total Tests: ${testStats.total}`);
-    console.log(`   📊 Success Rate: ${((testStats.passed / testStats.total) * 100).toFixed(1)}%`);
+    console.log(`OVERALL RESULTS:`);
+    console.log(`   Tests Passed: ${testStats.passed}`);
+    console.log(`   Tests Failed: ${testStats.failed}`);
+    console.log(`   Total Tests: ${testStats.total}`);
+    console.log(`   Success Rate: ${((testStats.passed / testStats.total) * 100).toFixed(1)}%`);
     
     // Test breakdown by category
-    console.log(`\n📋 TEST BREAKDOWN BY CATEGORY:`);
+    console.log(`\nTEST BREAKDOWN BY CATEGORY:`);
     Object.entries(testStats.categories).forEach(([category, stats]) => {
         if (stats.passed > 0 || stats.failed > 0) {
             const total = stats.passed + stats.failed;
@@ -404,30 +404,30 @@ const main = async () => {
     });
     
     // Timing information
-    console.log(`\n⏱️  TIMING INFORMATION:`);
-    console.log(`   🚀 Started: ${testStats.startTime.toISOString()}`);
-    console.log(`   🏁 Finished: ${testStats.endTime.toISOString()}`);
-    console.log(`   ⏰ Duration: ${durationSeconds} seconds`);
-    console.log(`   📏 Avg per test: ${(duration / testStats.total / 1000).toFixed(3)} seconds`);
+    console.log(`\nTIMING INFORMATION:`);
+    console.log(`   Started: ${testStats.startTime.toISOString()}`);
+    console.log(`   Finished: ${testStats.endTime.toISOString()}`);
+    console.log(`   Duration: ${durationSeconds} seconds`);
+    console.log(`   Avg per test: ${(duration / testStats.total / 1000).toFixed(3)} seconds`);
     
     // Test coverage areas
-    console.log(`\n🔍 TEST COVERAGE AREAS:`);
-    console.log(`   🔐 Authentication & Authorization`);
-    console.log(`   💰 Expense CRUD Operations`);
-    console.log(`   🔒 Security & Data Isolation`);
-    console.log(`   ✅ Input Validation & Error Handling`);
-    console.log(`   🎯 Edge Cases & Boundary Conditions`);
+    console.log(`\nTEST COVERAGE AREAS:`);
+    console.log(`   Authentication & Authorization`);
+    console.log(`   Expense CRUD Operations`);
+    console.log(`   Security & Data Isolation`);
+    console.log(`   Input Validation & Error Handling`);
+    console.log(`   Edge Cases & Boundary Conditions`);
     
     // Final status
     if (testStats.failed === 0) {
-        console.log(`\n🎉 ALL TESTS PASSED! The Expense Tracker API is working perfectly! 🎉`);
-        console.log(`✨ Ready for production deployment! ✨`);
+        console.log(`\nALL TESTS PASSED! The Expense Tracker API is working perfectly!`);
+        console.log(`Ready for production deployment!`);
     } else {
-        console.log(`\n⚠️  ${testStats.failed} test(s) failed. Please review and fix issues before deployment.`);
+        console.log(`\n${testStats.failed} test(s) failed. Please review and fix issues before deployment.`);
     }
     
     console.log('='.repeat(80));
-    console.log(`🏆 TEST SUITE EXECUTION COMPLETED`);
+    console.log(`TEST SUITE EXECUTION COMPLETED`);
     console.log('='.repeat(80));
 };
 
